@@ -9,7 +9,7 @@ from tensorflow.keras.models import load_model
 
 
 # Load the dataset for extracting structure
-df = pd.read_csv("Student_performance_data.csv")
+df = pd.read_csv("Student_performance_data.csv, nrows=100")
 X = df.drop(['StudentID', 'GradeClass'], axis=1)
 Y = df['GradeClass']
 
