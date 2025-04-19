@@ -6,65 +6,102 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 
-# Load minimal data sample
-df_sample = pd.read_csv("Student_performance_data.csv", nrows=50)
-X_sample = df_sample.drop(['StudentID', 'GradeClass'], axis=1)
-Y_sample = df_sample['GradeClass']
 
-# Only keep categorical column names and dropdown values
-categorical_cols = X_sample.select_dtypes(include=['object']).columns
-dropdown_options = {col: [{'label': val, 'value': val} for val in df_sample[col].unique()] for col in categorical_cols}
 
-# Precompute feature names and scalers using small sample
-X_encoded = pd.get_dummies(X_sample, columns=categorical_cols, drop_first=True)
+# Load the dataset for extracting structure
+df = pd.read_csv("Student_performance_data.csv", nrows=10)
+
+X = df.drop(['StudentID', 'GradeClass'], axis=1)
+Y = df['GradeClass']
+
+# One-hot encode categorical columns (fit same way as training)
+categorical_cols = X.select_dtypes(include=['object']).columns
+X_encoded = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
 scaler = StandardScaler()
-scaler.fit(X_encoded)
-feature_names = X_encoded.columns
+X_scaled = scaler.fit_transform(X_encoded)
 
-# Label encoder
+# Encode labels
 le = LabelEncoder()
-le.fit(Y_sample)
+Y_encoded = le.fit_transform(Y)
 
-# Lazy-load model
+# Feature columns after encoding
+feature_names = X_encoded.columns
 model = None
+
 def get_model():
     global model
     if model is None:
         model = load_model("student_performance_model.h5")
     return model
 
-# Prediction logic
+
+# Prediction function
 def predict_class(user_input_dict):
+    # Load the trained Keras model
     model = get_model()
     input_df = pd.DataFrame([user_input_dict])
     input_encoded = pd.get_dummies(input_df)
+    
+    # Align columns with training data
     input_encoded = input_encoded.reindex(columns=feature_names, fill_value=0)
     input_scaled = scaler.transform(input_encoded)
+    
     prediction = model.predict(input_scaled)
     predicted_class = le.inverse_transform([np.argmax(prediction)])[0]
     return predicted_class
 
-# Create app
+# Create Dash app
 app = dash.Dash(__name__)
-server = app.server
+server = app.server  # for Render deployment
 
 app.layout = html.Div([
     html.H1("Student Grade Class Predictor", style={'textAlign': 'center'}),
 
     html.Div([
-        html.Label("Age"), dcc.Input(id='Age', type='number', value=18),
-        html.Label("Gender"), dcc.Dropdown(id='Gender', options=dropdown_options['Gender']),
-        html.Label("Ethnicity"), dcc.Dropdown(id='Ethnicity', options=dropdown_options['Ethnicity']),
-        html.Label("Parental Education"), dcc.Dropdown(id='ParentalEducation', options=dropdown_options['ParentalEducation']),
-        html.Label("Study Time Weekly"), dcc.Input(id='StudyTimeWeekly', type='number', value=5),
-        html.Label("Absences"), dcc.Input(id='Absences', type='number', value=0),
-        html.Label("Tutoring"), dcc.Dropdown(id='Tutoring', options=dropdown_options['Tutoring']),
-        html.Label("Parental Support"), dcc.Dropdown(id='ParentalSupport', options=dropdown_options['ParentalSupport']),
-        html.Label("Extracurricular"), dcc.Dropdown(id='Extracurricular', options=dropdown_options['Extracurricular']),
-        html.Label("Sports"), dcc.Dropdown(id='Sports', options=dropdown_options['Sports']),
-        html.Label("Music"), dcc.Dropdown(id='Music', options=dropdown_options['Music']),
-        html.Label("Volunteering"), dcc.Dropdown(id='Volunteering', options=dropdown_options['Volunteering']),
-        html.Label("GPA"), dcc.Input(id='GPA', type='number', value=3.0, step=0.1),
+        html.Label("Age"),
+        dcc.Input(id='Age', type='number', value=18),
+
+        html.Label("Gender"),
+        dcc.Dropdown(id='Gender', options=[
+            {'label': g, 'value': g} for g in df['Gender'].unique()
+        ], value=df['Gender'].unique()[0]),
+
+        html.Label("Ethnicity"),
+        dcc.Dropdown(id='Ethnicity', options=[
+            {'label': e, 'value': e} for e in df['Ethnicity'].unique()
+        ], value=df['Ethnicity'].unique()[0]),
+
+        html.Label("Parental Education"),
+        dcc.Dropdown(id='ParentalEducation', options=[
+            {'label': p, 'value': p} for p in df['ParentalEducation'].unique()
+        ], value=df['ParentalEducation'].unique()[0]),
+
+        html.Label("Study Time Weekly"),
+        dcc.Input(id='StudyTimeWeekly', type='number', value=5),
+
+        html.Label("Absences"),
+        dcc.Input(id='Absences', type='number', value=0),
+
+        html.Label("Tutoring"),
+        dcc.Dropdown(id='Tutoring', options=[{'label': x, 'value': x} for x in df['Tutoring'].unique()], value=df['Tutoring'].unique()[0]),
+
+        html.Label("Parental Support"),
+        dcc.Dropdown(id='ParentalSupport', options=[{'label': x, 'value': x} for x in df['ParentalSupport'].unique()], value=df['ParentalSupport'].unique()[0]),
+
+        html.Label("Extracurricular"),
+        dcc.Dropdown(id='Extracurricular', options=[{'label': x, 'value': x} for x in df['Extracurricular'].unique()], value=df['Extracurricular'].unique()[0]),
+
+        html.Label("Sports"),
+        dcc.Dropdown(id='Sports', options=[{'label': x, 'value': x} for x in df['Sports'].unique()], value=df['Sports'].unique()[0]),
+
+        html.Label("Music"),
+        dcc.Dropdown(id='Music', options=[{'label': x, 'value': x} for x in df['Music'].unique()], value=df['Music'].unique()[0]),
+
+        html.Label("Volunteering"),
+        dcc.Dropdown(id='Volunteering', options=[{'label': x, 'value': x} for x in df['Volunteering'].unique()], value=df['Volunteering'].unique()[0]),
+
+        html.Label("GPA"),
+        dcc.Input(id='GPA', type='number', value=3.0, step=0.1),
 
         html.Br(), html.Button('Predict', id='predict-btn', n_clicks=0),
         html.H3(id='prediction-output', style={'marginTop': 20})
@@ -112,4 +149,8 @@ def update_prediction(n_clicks, Age, Gender, Ethnicity, ParentalEducation,
     return ""
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=8080)
+    print("app.py is running!")
+
+    app.run(debug=True, host="0.0.0.0", port=8080)#any device on same network can access the app using the server's IP address and port 8080
+    # app.run_server(debug=True, port=8050)  # for local testing
+
