@@ -25,11 +25,19 @@ Y_encoded = le.fit_transform(Y)
 
 # Feature columns after encoding
 feature_names = X_encoded.columns
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        model = load_model("student_performance_model.h5")
+    return model
+
 
 # Prediction function
 def predict_class(user_input_dict):
     # Load the trained Keras model
-    model = load_model("student_performance_model.h5")
+    model = get_model()
     input_df = pd.DataFrame([user_input_dict])
     input_encoded = pd.get_dummies(input_df)
     
