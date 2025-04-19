@@ -6,8 +6,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 
-# Load the trained Keras model
-model = load_model("student_performance_model.keras")
+
 
 # Load the dataset for extracting structure
 df = pd.read_csv("Student_performance_data.csv")
@@ -29,6 +28,8 @@ feature_names = X_encoded.columns
 
 # Prediction function
 def predict_class(user_input_dict):
+    # Load the trained Keras model
+    model = load_model("student_performance_model.h5")
     input_df = pd.DataFrame([user_input_dict])
     input_encoded = pd.get_dummies(input_df)
     
